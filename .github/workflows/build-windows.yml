@@ -33,14 +33,6 @@ jobs:
           $shortHash = "${{ github.sha }}".Substring(0, 7)
           echo "VERSION=$shortHash" >> $env:GITHUB_ENV
 
-      - name: Figure Environment
-        run: |
-          which clang ||  echo "Clang not found"
-          which gcc || echo "GCC not found"
-          which dotnet || echo ".NET not found"
-          which go || echo "Go not found"
-          go env || echo "Go environment not found"
-
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
@@ -52,38 +44,21 @@ jobs:
         uses: msys2/setup-msys2@v2
         with:
           msystem: CLANGARM64
+          location: C:/Tools
           update: true
-          pacman: >-
+          install: >-
             mingw-w64-clang-aarch64-clang
             mingw-w64-clang-aarch64-lld
 
-
-      - name: Verify Clang Installation
-        shell: msys2 {0}
-        run: |
-          which clang
-          echo "--- Verifying Clang compiler ---"
-          clang --version
-
-          echo "--- Verifying Clang++ compiler ---"
-          clang++ --version
-
-          echo "--- Verifying linker ---"
-          lld --version
-
-          echo "--- Checking PATH ---"
-          echo "$PATH"
-
-      - name: Setup ARM64 Environment
+      - name: Setup Compile Environment
         if: matrix.arch == 'arm64'
         shell: bash
         run: |
-          which clang || echo "Clang not found"
-          go env
+          clang --version
           echo "CGO_ENABLED=1" >> $GITHUB_ENV
           echo "GOARCH=arm64" >> $GITHUB_ENV
-          echo "CC=clang" >> $GITHUB_ENV
-          echo "CXX=clang++" >> $GITHUB_ENV
+          echo "CC=C:/Tools/msys64/clangarm64/bin/clang.exe" >> $GITHUB_ENV
+          echo "CXX=C:/Tools/msys64/clangarm64/bin/clang++.exe" >> $GITHUB_ENV
 
       - name: Download runtime
         run: |
@@ -93,6 +68,7 @@ jobs:
       - name: Build Nexa Cli
         run: |
           cd runner
+          go env
           make build ARCH=${{ matrix.arch }}
           Remove-Item build/ml.h
 
@@ -141,11 +117,6 @@ jobs:
       - name: Build launcher with PyInstaller
         run: |
           pyinstaller --onefile --noconsole --distpath artifacts --name "nexa-cli-launcher" --icon="runner/release/windows/nexa_logo.ico" runner/release/windows/nexa_launcher.py
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v4.1.0
-        with:
-          dotnet-version: 8.0.403
 
       - name: Sign executables with AzureSignTool
         shell: pwsh
